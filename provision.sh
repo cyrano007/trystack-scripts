@@ -53,10 +53,7 @@ function delete_router {
 }
 
 function default_sec_group {
-  openstack security group rule create ${SECURITY_GROUP} icmp -1 -1 0.0.0.0/0    #icmp ping
-  openstack security group rule create ${SECURITY_GROUP} tcp 22 22 0.0.0.0/0     #ssh
-  openstack security group rule create ${SECURITY_GROUP} tcp 2376 2376 0.0.0.0/0 #docker-machine
-  openstack security group rule create ${SECURITY_GROUP} tcp 554 554 0.0.0.0/0 #docker-machine
+  openstack security group rule create --protocol tcp --dst-port 2376:2376 --ingress --remote-ip 0.0.0.0/0 ${SECURITY_GROUP}
 }
 
 function create_docker {
