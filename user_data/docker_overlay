@@ -1,0 +1,15 @@
+
+
+## Well, finally I fixed it
+## 
+## Everything you have to do is to load a different storage-driver in my case I will use overlay:
+##
+##    Disable Docker service: sudo systemctl stop docker.service
+##    Start Docker Daemon (overlay driver): sudo docker daemon -s overlay
+##    Run Demo container: sudo docker run hello-world
+##
+## In order to make these changes permanent, you must edit /etc/default/docker file and add the option:
+## 
+## DOCKER_OPTS="-s overlay"
+## 
+## Next time Docker service get loaded, it will run docker daemon -s overlay
