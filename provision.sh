@@ -4,112 +4,90 @@
 # this script expects Openstack environment variables
 # like OS_TENANT_ID, OS_PASSWORD to be set
 
-#requires
-# pip install python-novaclient
-# pip install python-neutronclient
+# apt-get install openstack
 
-NUM_HOSTS=3
 FLAVOR=3   #m1.medium (3.75GB)
 IMAGE=2e4c08a9-0ecd-4541-8a45-838479a88552 # CentOS 7 x86_64
-SECURITY_GROUP=default
-KEY_NAME=ansible_key
-SSH_PUBKEY=~/.ssh/id_rsa.pub
 
+
+##### Openstack Network
+SSH_KEY=~/.ssh/ost
+SECURITY_GROUP=default
+OST_PRJ_NAME="Docker-SRV"
+OST_NET="NET-${OST_PRJ_NAME}"
+OST_SUBNET="SUBNET-${OST_PRJ_NAME}"
+OST_ROUTER="RTR-${OST_PRJ_NAME}"
 
 function create_ssh_pubkey {
-  nova keypair-add --pub-key ${SSH_PUBKEY} ${KEY_NAME}
+  openstack keypair create --public-key ${SSH_KEY}.pub ${OST_PRJ_NAME}
 }
 
 function _create_network {
-  neutron net-create network1
-  neutron subnet-create network1 10.10.10.0/24 --name subnet1
+  openstack network create ${OST_NET}
+  openstack subnet create ${OST_SUBNET} --network ${OST_NET} --subnet-range 192.168.1.0/24 --dns-nameserver 8.8.8.8
 }
 
 function create_network {
-  nova network-show network1 || _create_network
+  openstack network show ${OST_NET} || _create_network
+}
+
+function delete_network {
+ openstack subnet delete ${OST_SUBNET}
+ openstack network delete ${OST_NET}
 }
 
 function _create_router {
-  neutron router-create router1
-  neutron router-gateway-set router1 external
-  neutron router-interface-add router1 subnet1
+  openstack router create ${OST_ROUTER}
+  openstack router set ${OST_ROUTER} --external-gateway public
+  openstack router add subnet ${OST_ROUTER} ${OST_SUBNET} 
 }
 
 function create_router {
-  neutron router-show router1 || _create_router
+  openstack router show ${OST_ROUTER} || _create_router
 }
-
-function create_floating_ips {
-  for i in `seq 1 ${NUM_HOSTS}` ; do
-    neutron floatingip-create external
-  done
-}
-
-#start at index 1
-function get_floating_ips {
-  floating_ips=( skip $(nova floating-ip-list | grep external | awk '{print $2}') )
-}
-
-function create_ssh_pubkey {
-  nova keypair-add --pub-key ${SSH_PUBKEY} ${KEY_NAME}
+function delete_router {
+  openstack router remove subnet ${OST_ROUTER} ${OST_SUBNET}
+  sleep 5
+  openstack router delete ${OST_ROUTER}
+  sleep 5
 }
 
 function default_sec_group {
-  nova secgroup-add-rule ${SECURITY_GROUP} icmp -1 -1 0.0.0.0/0    #icmp ping
-  nova secgroup-add-rule ${SECURITY_GROUP} tcp 22 22 0.0.0.0/0     #ssh
-  nova secgroup-add-rule ${SECURITY_GROUP} tcp 5050 5050 0.0.0.0/0 #mesos-leader
-  nova secgroup-add-rule ${SECURITY_GROUP} tcp 5051 5051 0.0.0.0/0 #mesos-follower
-  nova secgroup-add-rule ${SECURITY_GROUP} tcp 8080 8080 0.0.0.0/0 #marathon
-  nova secgroup-add-rule ${SECURITY_GROUP} tcp 8500 8500 0.0.0.0/0 #consul
-  nova secgroup-add-rule ${SECURITY_GROUP} tcp 9090 9090 0.0.0.0/0 #mesos libprocess
+  openstack security group rule create ${SECURITY_GROUP} icmp -1 -1 0.0.0.0/0    #icmp ping
+  openstack security group rule create ${SECURITY_GROUP} tcp 22 22 0.0.0.0/0     #ssh
+  openstack security group rule create ${SECURITY_GROUP} tcp 2376 2376 0.0.0.0/0 #docker-machine
+  openstack security group rule create ${SECURITY_GROUP} tcp 554 554 0.0.0.0/0 #docker-machine
 }
 
-function boot_instances {
-  for i in `seq 1 ${NUM_HOSTS}`; do
-    nova boot --flavor ${FLAVOR} \
-              --key_name ${KEY_NAME} \
-              --image ${IMAGE} \
-              --security_group ${SECURITY_GROUP} \
-              --user-data user_data/data.txt \
-              node1${i}
-  done
+function create_docker {
+   docker-machine -D create \
+         --engine-storage-driver overlay \
+         --driver openstack \
+         --openstack-image-id 76f5f4aa-a78f-4703-b738-cab967957431 \
+         --openstack-flavor-id 2 \
+         --openstack-floatingip-pool public \
+         --openstack-net-name ${OST_NET} \
+         --openstack-sec-groups default \
+         --openstack-ssh-user ubuntu \
+         --openstack-keypair-name ${OST_PRJ_NAME} \
+         --openstack-private-key-file ${SSH_KEY} \
+         ${OST_PRJ_NAME}
+
+}
+function delete_docker {
+   docker-machine rm ${OST_PRJ_NAME} -f 
 }
 
-function allocate_ips {
-  floating_ips=( $(nova floating-ip-list | grep external | awk '{print $2}') )
-  for i in `seq 1 ${NUM_HOSTS}`; do
-    echo "allocating ${floating_ips[${i}]} to node1${i}"
-    nova floating-ip-associate node1${i} ${floating_ips[${i}]}
-  done
-}
-
-#Trystack nodes default resolv.conf doesn't work for
-#external requests. Look into fixing via user_data
-function resolv_conf {
-  floating_ips=( $(nova floating-ip-list | grep external | awk '{print $2}') )
-  for i in ${floating_ips[*]}; do
-    echo -e "nameserver 8.8.8.8" > resolv.conf.tmp
-    scp -o StrictHostKeyChecking=no resolv.conf.tmp centos@${i}:/tmp/resolv.conf
-    ssh -o StrictHostKeyChecking=no -t centos@${i} "sudo cp /tmp/resolv.conf /etc/resolv.conf"
-    rm -f resolv.conf.tmp
-  done
-}
-
-function main {
+function create_ost {
   create_ssh_pubkey
   create_network
-  create_router
-  create_floating_ips
-  default_sec_group
-  boot_instances
-
-  sleep 5 && allocate_ips
-  sleep 60 && resolv_conf
+  create_router 
+  create_docker
+  # default_sec_group
 }
 
-function inventory {
-  floating_ips=( $(nova floating-ip-list | grep external | awk '{print $2}') )
-  for i in `seq 1 ${NUM_HOSTS}`; do
-    echo node1${i} ansible_ssh_host=${floating_ips[i]} ansible_ssh_user=centos
-  done
+function delete_ost {
+  delete_docker
+  delete_router
+  delete_network
 }
