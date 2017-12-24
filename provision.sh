@@ -7,7 +7,7 @@
 # apt-get install openstack
 # apt-get install curl
 
-source ./env.config
+source env.config
 
 function create_ssh_pubkey {
   openstack keypair create --public-key ${SSH_KEY}.pub ${OST_PRJ_NAME}
@@ -70,10 +70,10 @@ function get_info {
 
 function create_ost {
   create_ssh_pubkey
+  create_sec_group
   create_network
   create_router 
   create_docker
-  create_sec_group
 }
 
 
