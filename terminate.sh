@@ -4,14 +4,10 @@
 # this script expects Openstack environment variables
 # like OS_TENANT_ID, OS_PASSWORD to be set
 
-#requires
-# pip install python-novaclient
-# pip install python-neutronclient
-
-source env.config
+source ./env.config
 
 function delete_ssh_pubkey {
-  nova keypair-delete ${KEY_NAME}
+  openstack keypair delete ${OST_PRJ_NAME}
 }
 
 function delete_network {
@@ -29,14 +25,8 @@ function delete_docker {
 }
 
 function delete_sec_group {
-  nova secgroup-delete-rule ${SECURITY_GROUP} icmp -1 -1 0.0.0.0/0    #icmp ping
-  nova secgroup-delete-rule ${SECURITY_GROUP} tcp 22 22 0.0.0.0/0     #ssh
-  nova secgroup-delete-rule ${SECURITY_GROUP} tcp 5050 5050 0.0.0.0/0 #mesos-leader
-  nova secgroup-delete-rule ${SECURITY_GROUP} tcp 5051 5051 0.0.0.0/0 #mesos-follower
-  nova secgroup-delete-rule ${SECURITY_GROUP} tcp 8080 8080 0.0.0.0/0 #marathon
-  nova secgroup-delete-rule ${SECURITY_GROUP} tcp 8500 8500 0.0.0.0/0 #consul
-  nova secgroup-delete-rule ${SECURITY_GROUP} tcp 9090 9090 0.0.0.0/0 #mesos libprocess
-}
+  openstack security group delete ${OST_SEC_GROUP}
+ }
 
 
 function delete_all {

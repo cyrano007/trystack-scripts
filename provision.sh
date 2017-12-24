@@ -7,9 +7,7 @@
 # apt-get install openstack
 # apt-get install curl
 
-source env.config
-
-
+source ./env.config
 
 function create_ssh_pubkey {
   openstack keypair create --public-key ${SSH_KEY}.pub ${OST_PRJ_NAME}
@@ -34,9 +32,11 @@ function create_router {
   openstack router show ${OST_ROUTER} || _create_router
 }
 
-function default_sec_group {
-  openstack security group rule create --protocol tcp --dst-port 2376:2376 --ingress --remote-ip 0.0.0.0/0 ${SECURITY_GROUP} #  Docker-Machine
-  openstack security group rule create --protocol tcp --dst-port 22:22 --ingress --remote-ip 0.0.0.0/0 ${SECURITY_GROUP}  # SSH
+function create_sec_group {
+  openstack security group create ${OST_SEC_GROUP}
+  openstack security group rule create --proto icmp ${OST_SEC_GROUP} 			#icmp ping
+  openstack security group rule create --protocol tcp --dst-port 2376 ${OST_SEC_GROUP} 	#  Docker-Machine
+  openstack security group rule create --proto tcp --dst-port 22 ${OST_SEC_GROUP} 	# SSH
 }
 
 function _create_docker {
@@ -47,7 +47,7 @@ function _create_docker {
          --openstack-flavor-id 2 \
          --openstack-floatingip-pool public \
          --openstack-net-name ${OST_NET} \
-         --openstack-sec-groups default \
+         --openstack-sec-groups ${OST_SEC_GROUP} \
          --openstack-ssh-user ubuntu \
          --openstack-keypair-name ${OST_PRJ_NAME} \
          --openstack-private-key-file ${SSH_KEY} \
@@ -58,16 +58,22 @@ function create_docker {
    docker-machine status ${OST_PRJ_NAME} ||  _create_docker	
 }
 
+function get_info {
+   docker-machine ls
+   openstack server list
+   openstack network list
+   openstack subnet list
+   openstack router list
+   openstack security group list
+   openstack security group rule list
+}
+
 function create_ost {
   create_ssh_pubkey
   create_network
   create_router 
   create_docker
-  # default_sec_group
+  create_sec_group
 }
 
-function delete_ost {
-  delete_docker
-  delete_router
-  delete_network
-}
+

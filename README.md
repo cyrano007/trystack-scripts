@@ -54,7 +54,7 @@ Functions:
 
 	create_router: creates router
 
-	default_sec_group: sets up inbound rules for the default security group
+	create_sec_group: sets up inbound rules for the security group
 
 	create_docker: install & launches DockerInstances
 	
