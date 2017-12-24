@@ -8,27 +8,24 @@
 # pip install python-novaclient
 # pip install python-neutronclient
 
-NUM_HOSTS=3
-FLAVOR=3   #m1.medium (3.75GB)
-IMAGE=2e4c08a9-0ecd-4541-8a45-838479a88552 # CentOS 7 x86_64   
-SECURITY_GROUP=default
-KEY_NAME=ansible_key
-SSH_PUBKEY=~/.ssh/id_rsa.pub
-
+source env.config
 
 function delete_ssh_pubkey {
   nova keypair-delete ${KEY_NAME}
 }
 
 function delete_network {
-  neutron subnet-delete subnet1
-  neutron net-delete network1
+ openstack subnet delete ${OST_SUBNET}
+ openstack network delete ${OST_NET}
 }
 
 function delete_router {
-  neutron router-interface-delete router1 subnet1
-  neutron router-gateway-clear router1 
-  neutron router-delete router1
+  openstack router remove subnet ${OST_ROUTER} ${OST_SUBNET}
+  openstack router delete ${OST_ROUTER}
+}
+
+function delete_docker {
+   docker-machine rm ${OST_PRJ_NAME} -f 
 }
 
 function delete_sec_group {
@@ -41,28 +38,10 @@ function delete_sec_group {
   nova secgroup-delete-rule ${SECURITY_GROUP} tcp 9090 9090 0.0.0.0/0 #mesos libprocess
 }
 
-function terminate_instances {
-  for i in `seq 1 ${NUM_HOSTS}`; do 
-    nova delete node1${i}
-  done
-}
-
-function delete_ips {
-  for i in `nova floating-ip-list | grep external | awk '{print $2}'`; do
-    nova floating-ip-delete ${i}
-  done
-}
-
-function main {
-  terminate_instances
-  delete_ips
-}
 
 function delete_all {
-  terminate_instances
-  delete_ips
+  delete_docker
   delete_router
-
   delete_network
   delete_sec_group
   delete_ssh_pubkey

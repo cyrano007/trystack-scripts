@@ -1,13 +1,11 @@
 Overview:
 ========
-Functions to provision a simple 3-node cluster in trystack
+Functions to provision a simple docker-server with docker-machine in trystack
 
 - Sets up networks
 - Configures ssh key
-- creates floating ips
 - creates a router and attaches it the external network
-- boots centos7 nodes
-- updates resolv.conf to use google dns
+- boot and install docker-server with docker-machine
 
 
 Requirements
@@ -17,8 +15,10 @@ Requirements
 - Account on http://trystack.org
 - Install Openstack Clients:
 
-		pip install python-novaclient
-		pip install python-neutronclient
+		sudo apt-get install openstack
+		sudo apt-get install curl
+		$ curl -L https://github.com/docker/machine/releases/download/v0.13.0/docker-machine-`uname -s`-`uname -m` >/tmp/docker-machine && chmod +x /tmp/docker-machine && sudo cp /tmp/docker-machine /usr/local/bin/docker-machine
+		
 
 - Have openstack environment environment varibles similar to this:
 
@@ -40,7 +40,7 @@ Running:
   
 To run everything:
 
-  	main
+  	create_ost
   	
   	
 Each function can be run separately. 
@@ -48,24 +48,16 @@ Each function can be run separately.
 Functions:
 =========
 
-	create_ssh_pubkey: uploads youd id_rsa as ansible_key
+	create_ssh_pubkey: uploads youd id_rsa
 	
-	create_network: creates  network1
+	create_network: creates  network 
 
-	create_router: creates router1
-
-	create_floating_ips: creates external floating ips
-
-	get_floating_ips
+	create_router: creates router
 
 	default_sec_group: sets up inbound rules for the default security group
 
-	boot_instances: launches CentosInstances
-
-	allocate_ips: allocates external IPs to instances
-
-	resolv_conf: Point resolv.conf to 8.8.8.8
+	create_docker: install & launches DockerInstances
 	
-	main: run all functions
+	create_ost: run all functions
 
-        inventory: generate ansible inventory
+

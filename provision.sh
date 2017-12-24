@@ -1,22 +1,15 @@
 #!/bin/sh
 
-#provisions a 3-node cluster in openstack
+#provisions a Docker-Server with Docker-Machine in openstack
 # this script expects Openstack environment variables
 # like OS_TENANT_ID, OS_PASSWORD to be set
 
 # apt-get install openstack
+# apt-get install curl
 
-FLAVOR=3   #m1.medium (3.75GB)
-IMAGE=2e4c08a9-0ecd-4541-8a45-838479a88552 # CentOS 7 x86_64
+source env.config
 
 
-##### Openstack Network
-SSH_KEY=~/.ssh/ost
-SECURITY_GROUP=default
-OST_PRJ_NAME="Docker-SRV"
-OST_NET="NET-${OST_PRJ_NAME}"
-OST_SUBNET="SUBNET-${OST_PRJ_NAME}"
-OST_ROUTER="RTR-${OST_PRJ_NAME}"
 
 function create_ssh_pubkey {
   openstack keypair create --public-key ${SSH_KEY}.pub ${OST_PRJ_NAME}
@@ -31,11 +24,6 @@ function create_network {
   openstack network show ${OST_NET} || _create_network
 }
 
-function delete_network {
- openstack subnet delete ${OST_SUBNET}
- openstack network delete ${OST_NET}
-}
-
 function _create_router {
   openstack router create ${OST_ROUTER}
   openstack router set ${OST_ROUTER} --external-gateway public
@@ -45,23 +33,17 @@ function _create_router {
 function create_router {
   openstack router show ${OST_ROUTER} || _create_router
 }
-function delete_router {
-  openstack router remove subnet ${OST_ROUTER} ${OST_SUBNET}
-  sleep 5
-  openstack router delete ${OST_ROUTER}
-  sleep 5
-}
 
 function default_sec_group {
   openstack security group rule create --protocol tcp --dst-port 2376:2376 --ingress --remote-ip 0.0.0.0/0 ${SECURITY_GROUP} #  Docker-Machine
   openstack security group rule create --protocol tcp --dst-port 22:22 --ingress --remote-ip 0.0.0.0/0 ${SECURITY_GROUP}  # SSH
 }
 
-function create_docker {
+function _create_docker {
    docker-machine -D create \
          --engine-storage-driver overlay \
          --driver openstack \
-         --openstack-image-id 76f5f4aa-a78f-4703-b738-cab967957431 \
+         --openstack-image-id ${OST_IMAGE} \
          --openstack-flavor-id 2 \
          --openstack-floatingip-pool public \
          --openstack-net-name ${OST_NET} \
@@ -70,10 +52,10 @@ function create_docker {
          --openstack-keypair-name ${OST_PRJ_NAME} \
          --openstack-private-key-file ${SSH_KEY} \
          ${OST_PRJ_NAME}
-
 }
-function delete_docker {
-   docker-machine rm ${OST_PRJ_NAME} -f 
+
+function create_docker {
+   docker-machine status ${OST_PRJ_NAME} ||  _create_docker	
 }
 
 function create_ost {
