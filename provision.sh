@@ -66,6 +66,7 @@ function get_info {
    openstack router list
    openstack security group list
    openstack security group rule list
+   openstack keypair list
 }
 
 function create_ost {
@@ -74,6 +75,7 @@ function create_ost {
   create_network
   create_router 
   create_docker
+  get_info
 }
 
 
