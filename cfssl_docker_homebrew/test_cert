@@ -1,0 +1,24 @@
+#!/bin/bash
+
+certname=$1  
+caaddress=$2
+
+# Generate Certificate
+curl -d '{ "request": {"CN": '"$certname"',"hosts":['"$certname"'], "key": { "algo": "rsa","size": 2048 }, "names": [{"C":"US","ST":"California", "L":"San Francisco","O":"example.com"}]}}' http://8.43.87.177:8888/api/v1/cfssl/newcert
+
+# Create Private Key
+echo -e "$(cat tmpcert.json | python -m json.tool | \  
+grep private_key | cut -f4 -d '"')" \  
+> /opt/$certname.key
+
+# Create Certificate
+echo -e "$(cat tmpcert.json | python -m json.tool | \  
+grep -m 1 certificate | cut -f4 -d '"')" \  
+> /opt/$certname.cer
+
+# Create Certificate Request
+echo -e "$(cat tmpcert.json | python -m json.tool | \  
+grep certificate_request | cut -f4 -d '"')" > /opt/$certname.csr
+
+# Remove JSON Data
+rm -Rf tmpcert.json  

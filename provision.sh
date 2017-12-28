@@ -34,9 +34,9 @@ function create_router {
 
 function create_sec_group {
   openstack security group create ${OST_SEC_GROUP}
-  openstack security group rule create --proto icmp ${OST_SEC_GROUP} 			#icmp ping
+  openstack security group rule create --proto icmp ${OST_SEC_GROUP} 			#  icmp ping
   openstack security group rule create --protocol tcp --dst-port 2376 ${OST_SEC_GROUP} 	#  Docker-Machine
-  openstack security group rule create --proto tcp --dst-port 22 ${OST_SEC_GROUP} 	# SSH
+  openstack security group rule create --proto tcp --dst-port 22 ${OST_SEC_GROUP} 	#  SSH
 }
 
 function _create_docker {
@@ -77,5 +77,4 @@ function create_ost {
   create_docker
   get_info
 }
-
 

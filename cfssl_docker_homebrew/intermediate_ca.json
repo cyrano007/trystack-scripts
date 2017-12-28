@@ -1,5 +1,5 @@
 {
- "CN": "POOLIX-CA",
+ "CN": "POOLIX-Intermediate-CA",
  "key": {
     "algo": "ecdsa",
     "size": 256
@@ -13,6 +13,6 @@
  }
  ],
  "ca": {
-    "expiry": "262800h"
+    "expiry": "42720h"
  }
 }
