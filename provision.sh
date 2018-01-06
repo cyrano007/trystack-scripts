@@ -9,6 +9,8 @@
 
 source env.config
 
+OST_SRV=SRV-${OST_PRJ_NAME}
+
 function create_ssh_pubkey {
   openstack keypair create --public-key ${SSH_KEY}.pub ${OST_PRJ_NAME}
 }
@@ -39,27 +41,17 @@ function create_sec_group {
   openstack security group rule create --proto tcp --dst-port 22 ${OST_SEC_GROUP} 	#  SSH
 }
 
-function _create_docker {
-   docker-machine -D create \
-         --engine-storage-driver overlay \
-         --driver openstack \
-         --openstack-image-id ${OST_IMAGE} \
-         --openstack-flavor-id 2 \
-         --openstack-floatingip-pool public \
-         --openstack-net-name ${OST_NET} \
-         --openstack-sec-groups ${OST_SEC_GROUP} \
-         --openstack-ssh-user ubuntu \
-         --openstack-keypair-name ${OST_PRJ_NAME} \
-         --openstack-private-key-file ${SSH_KEY} \
-         ${OST_PRJ_NAME}
+function start_srv {
+    openstack server create --flavor ${OST_FLAVOR} \
+              --key-name ${OST_PRJ_NAME} \
+              --image ${OST_IMAGE} \
+              --security-group ${OST_SEC_GROUP} \
+              --user-data user_data/data.txt \
+              ${OST_SRV}
 }
 
-function create_docker {
-   docker-machine status ${OST_PRJ_NAME} ||  _create_docker	
-}
 
 function get_info {
-   docker-machine ls
    openstack server list
    openstack network list
    openstack subnet list
@@ -74,7 +66,6 @@ function create_ost {
   create_sec_group
   create_network
   create_router 
-  create_docker
   get_info
 }
 
